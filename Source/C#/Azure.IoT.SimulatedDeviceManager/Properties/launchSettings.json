@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Azure.IoT.SimulatedDeviceManager": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "registryConnectionString": ""
+      }
+    }
+  }
+}

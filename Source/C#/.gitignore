@@ -6,9 +6,6 @@
 # Azure Functions localsettings file
 local.settings.json
 
-# Environment variables with sensitive information
-launchSettings.json
-
 # User-specific files
 *.rsuser
 *.suo

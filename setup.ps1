@@ -114,7 +114,6 @@ function Add-ResourceGroup {
 
 function Select-ResourceGroup {
     $resourceGroups = az group list --subscription $selectedSubscription.id | ConvertFrom-Json
-    $newResourceGroup = false
 
     if ($resourceGroups.length -eq 0) {
         Add-Separator
@@ -171,7 +170,7 @@ function Add-Device ([String]$IotHubName) {
         do {
             $deviceName = Read-Host "What will your starter IoT device be called?"
         }
-        until ($deviceId -ne "")
+        until ($deviceName -ne "")
         Write-Host "Creating device" $deviceName "for Iot Hub" $IotHubName -ForegroundColor Cyan
         $device = az iot hub device-identity create -n $IotHubName -d $deviceName | ConvertFrom-Json
         if (!$device) {
@@ -179,10 +178,15 @@ function Add-Device ([String]$IotHubName) {
         }
     }
     until ($device)
+
+    Write-Host "Your primary connection string for this device is:"
+    Write-Host "HostName=$iotHubName.azure-devices.net;DeviceId=$deviceName;SharedAccessKey=$($createdDevice.authentication.symmetricKey.primaryKey)"
+    Write-Host "You can look this up later in the Azure Portal"
+
     return $device
 }
 
-function Add-FunctionApp([String]$IotHubName, [String]$ResourceGroupName, [String]$ResourceGroupLocation) {
+function Add-FunctionApp([String]$IotHubName, [String]$ResourceGroupName, [String]$ResourceGroupLocation, [String]$IoTHubEndpoint) {
     Add-Separator
     Write-Host "Now creating the necessary FunctionApp" -ForegroundColor Magenta
 
@@ -197,15 +201,7 @@ function Add-FunctionApp([String]$IotHubName, [String]$ResourceGroupName, [Strin
         Write-Host $storageAccount
         exit $FunctionAppStorageCreationError
     }
-#     else {
-          ## @{accessTier=Hot; allowBlobPublicAccess=; allowSharedKeyAccess=; azureFilesIdentityBasedAuthentication=; blobRestoreStatus=; creationTime=5/24/2021 2:23:12 PM;
-          ## customDomain=; enableHttpsTrafficOnly=True; enableNfsV3=; encryption=; extendedLocation=; failoverInProgress=; geoReplicationStats=;
-          ## id=/subscriptions/99d58a1f-efa8-48a6-9eff-cacd822b607e/resourceGroups/quickstartrg/providers/Microsoft.Storage/storageAccounts/quickstart03sta; identity=;
-          ## isHnsEnabled=; kind=StorageV2; largeFileSharesState=; lastGeoFailoverTime=; location=westeurope; minimumTlsVersion=; name=quickstart03sta; networkRuleSet=;
-          ## primaryEndpoints=; primaryLocation=westeurope; privateEndpointConnections=System.Object[]; provisioningState=Succeeded; resourceGroup=quickstartrg;
-          ## routingPreference=; secondaryEndpoints=; secondaryLocation=; sku=; statusOfPrimary=available; statusOfSecondary=; tags=; type=Microsoft.Storage/storageAccounts}
-#         Write-Host "Storage account:" $storageAccount
-#     }
+
     $storageAccountName = $storageAccount.name
 
     Write-Host "Creating the function app..."
@@ -214,28 +210,13 @@ function Add-FunctionApp([String]$IotHubName, [String]$ResourceGroupName, [Strin
         Write-Host "Error creating function app configuration!" -ForegroundColor Red
         exit $FunctionAppCreationError
     }
-    else {
-        ## @{availabilityState=Normal; clientAffinityEnabled=False; clientCertEnabled=False; clientCertExclusionPaths=; cloningInfo=; containerSize=1536; dailyMemoryTimeQuota=0;
-        ## defaultHostName=quickstart03fn.azurewebsites.net; enabled=True; enabledHostNames=System.Object[]; hostNameSslStates=System.Object[]; hostNames=System.Object[];
-        ## hostNamesDisabled=False; hostingEnvironmentProfile=; httpsOnly=False; hyperV=False; id=/subscriptions/99d58a1f-efa8-48a6-9eff-cacd822b607e/resourceGroups/quickstartrg/providers/Microsoft.Web/sites/quickstart03fn;
-        ## identity=; inProgressOperationId=; isDefaultContainer=; isXenon=False; kind=functionapp; lastModifiedTimeUtc=5/24/2021 12:23:39 PM; location=westeurope; maxNumberOfWorkers=;
-        ## name=quickstart03fn; outboundIpAddresses=20.73.227.43,20.73.227.86,20.73.228.215,20.73.227.58,20.73.229.188,20.73.231.81,20.50.2.29;
-        ## possibleOutboundIpAddresses=20.73.227.43,20.73.227.86,20.73.228.215,20.73.227.58,20.73.229.188,20.73.231.81,20.73.231.166,20.73.104.7,20.73.105.238,20.73.106.2,20.73.106.56,20.73.106.119,20.73.106.126,20.73.230.102,20.73.106.168,20.73.107.40,20.73.107.51,20.73.108.234,20.73.109.13,20.73.109.33,20.73.109.80,20.73.109.82,20.73.109.78,20.73.109.86,20.73.109.116,20.73.109.131,20.73.109.138,51.124.85.185,51.124.85.192,51.124.85.244,20.50.2.29;
-        ## redundancyMode=None; repositorySiteName=quickstart03fn; reserved=False; resourceGroup=quickstartrg; scmSiteAlsoStopped=False;
-        ## serverFarmId=/subscriptions/99d58a1f-efa8-48a6-9eff-cacd822b607e/resourceGroups/quickstartrg/providers/Microsoft.Web/serverfarms/WestEuropePlan; siteConfig=;
-        ## slotSwapStatus=; state=Running; suspendedTill=; tags=; targetSwapSlot=; trafficManagerHostNames=; type=Microsoft.Web/sites; usageState=Normal}
-#         Write-Host "Function application:" $functionApp
-    }
     $functionAppName = $functionApp.name
 
     Write-Host "Updating Azure Function configuration to connect with the IoT Hub..."
-    $config = az functionapp config appsettings set --name $functionAppName --resource-group $ResourceGroupName --settings "IoTHubServiceEndpoint=$sharedAccessServiceConnectionString"
+    $config = az functionapp config appsettings set --name $functionAppName --resource-group $ResourceGroupName --settings "IoTHubServiceEndpoint=$IoTHubEndpoint"
     if (!$config) {
         Write-Host "Error creating function app configuration!" -ForegroundColor Red
         exit $FunctionAppConfigurationCreationError
-    }
-    else {
-        Write-Host "Function app config:" $config
     }
 
     Write-Host "Building the function application..."
@@ -263,30 +244,7 @@ function Add-FunctionApp([String]$IotHubName, [String]$ResourceGroupName, [Strin
     [io.compression.zipfile]::CreateFromDirectory($publishFolder, $assembledFilePath)
 
     Write-Host "Deploying the function application..."
-    az functionapp deployment source config-zip -g $ResourceGroupName -n $functionAppName --src $publishZip
-
-    ## {
-    ##      "active": true,
-    ##      "author": "N/A",
-    ##      "author_email": "N/A",
-    ##      "complete": true,
-    ##      "deployer": "ZipDeploy",
-    ##      "end_time": "2021-05-24T13:22:35.6084759Z",
-    ##      "id": "84fad0940f1046669e998173c53a12a8",
-    ##      "is_readonly": true,
-    ##      "is_temp": false,
-    ##      "last_success_end_time": "2021-05-24T13:22:35.6084759Z",
-    ##      "log_url": "https://quickstart03fn.scm.azurewebsites.net/api/deployments/latest/log",
-    ##      "message": "Created via a push deployment",
-    ##      "progress": "",
-    ##      "provisioningState": "Succeeded",
-    ##      "received_time": "2021-05-24T13:22:25.5342737Z",
-    ##      "site_name": "quickstart03fn",
-    ##      "start_time": "2021-05-24T13:22:26.0350391Z",
-    ##      "status": 4,
-    ##      "status_text": "",
-    ##      "url": "https://quickstart03fn.scm.azurewebsites.net/api/deployments/latest"
-    ##    }
+    az functionapp deployment source config-zip -g $ResourceGroupName -n $functionAppName --src $assembledFilePath
 }
 
 ### Main Script
@@ -298,7 +256,7 @@ try {
         throw
     }
     Write-Host 'Already logged in' -ForegroundColor Blue
-    $accountSubscriptions = az account show | ConvertFrom-Json
+    $accountSubscriptions = az account list | ConvertFrom-Json
 }
 catch {
     Write-Host 'Executing Azure login' -ForegroundColor Yellow
@@ -327,21 +285,14 @@ Write-Host "You have selected resource group" $resourceGroup.name "at location" 
 $iotHub = Add-IotHub
 $iotHubName = $iotHub.name
 
-#TODO: "Built-in endpoints" in Azure Portal. this one is not correct. Get the built-in endpoint of Shared Access Policy "service"
-# $serviceSharedAccessPolicy = az iot hub policy show --hub-name $iotHubName --name service | ConvertFrom-Json
-# $sharedAccessServicePrimaryKey = $serviceSharedAccessPolicy.primaryKey
-# $sharedAccessServiceConnectionString = "HostName=$iotHubName.azure-devices.net;SharedAccessKeyName=service;SharedAccessKey=$sharedAccessServicePrimaryKey"
+$serviceSharedAccessPolicy = az iot hub policy show --hub-name $iotHubName --name service | ConvertFrom-Json
+$sharedAccessServicePrimaryKey = $serviceSharedAccessPolicy.primaryKey
+$endpoint = $iotHub.properties.eventHubEndpoints.events.endpoint;
+$entityPath = $iotHub.properties.eventHubEndpoints.events.path;
+$IoTHubEndpoint = "Endpoint=$endpoint;SharedAccessKeyName=service;SharedAccessKey=$sharedAccessServicePrimaryKey;EntityPath=$entityPath"
 
 ## Create Device
 $createdDevice = Add-Device -IotHubName $iotHubName
-Write-Host "Your primary connection string for this device is:"
-Write-Host "HostName=$iotHubName.azure-devices.net;DeviceId=$deviceId;SharedAccessKey=$($createdDevice.authentication.symmetricKey.primaryKey)"
-Write-Host "You can look this up later in the Azure Portal"
 
 ## Create FunctionApp
-$functionApp = Add-FunctionApp -IotHubName $iotHubName -ResourceGroupName $resourceGroup.name -ResourceGroupLocation $resourceGroupLocation
-
-# TODO: add selection (C#, Java, Python)
-# TODO: Fine tuning iot hub name input (max 18 chars, no hyphens)
-# TODO: gitignore publish.zip
-# TODO: general error handling/retry mechanism
+$functionApp = Add-FunctionApp -IotHubName $iotHubName -ResourceGroupName $resourceGroup.name -ResourceGroupLocation $resourceGroupLocation -IoTHubEndpoint $IoTHubEndpoint
