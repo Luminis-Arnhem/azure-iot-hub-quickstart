@@ -35,6 +35,7 @@
             this.gb_overTheAirUpdate = new System.Windows.Forms.GroupBox();
             this.lbl_versionNumber = new System.Windows.Forms.Label();
             this.gb_deviceTwin = new System.Windows.Forms.GroupBox();
+            this.checkedListBox1 = new System.Windows.Forms.CheckedListBox();
             ((System.ComponentModel.ISupportInitialize)(this.nud_reportingRate)).BeginInit();
             this.gb_overTheAirUpdate.SuspendLayout();
             this.gb_deviceTwin.SuspendLayout();
@@ -118,11 +119,20 @@
             this.gb_deviceTwin.TabStop = false;
             this.gb_deviceTwin.Text = "Device Twin editor";
             // 
+            // checkedListBox1
+            // 
+            this.checkedListBox1.FormattingEnabled = true;
+            this.checkedListBox1.Location = new System.Drawing.Point(161, 138);
+            this.checkedListBox1.Name = "checkedListBox1";
+            this.checkedListBox1.Size = new System.Drawing.Size(120, 94);
+            this.checkedListBox1.TabIndex = 5;
+            // 
             // ManagerForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(342, 146);
+            this.ClientSize = new System.Drawing.Size(342, 264);
+            this.Controls.Add(this.checkedListBox1);
             this.Controls.Add(this.gb_deviceTwin);
             this.Controls.Add(this.gb_overTheAirUpdate);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
@@ -148,6 +158,7 @@
         private System.Windows.Forms.GroupBox gb_overTheAirUpdate;
         private System.Windows.Forms.GroupBox gb_deviceTwin;
         private System.Windows.Forms.Label lbl_versionNumber;
+        private System.Windows.Forms.CheckedListBox checkedListBox1;
     }
 }
 

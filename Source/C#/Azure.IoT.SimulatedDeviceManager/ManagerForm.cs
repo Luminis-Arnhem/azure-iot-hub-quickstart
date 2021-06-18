@@ -3,12 +3,12 @@ using Microsoft.Azure.Devices;
 using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
+using System.Linq;
 
 namespace Azure.IoT.SimulatedDeviceManager
 {
     public partial class ManagerForm : Form
     {
-        private const string deviceId = "TelemetryPrototype";
         private readonly RegistryManager registryManager;
 
         public ManagerForm()
@@ -17,25 +17,38 @@ namespace Azure.IoT.SimulatedDeviceManager
 
             // Portal - IoT Hub - Shared Access Policies - service
             var registryConnectionString = Environment.GetEnvironmentVariable("registryConnectionString");
-            if(registryConnectionString == null)
+            if (registryConnectionString == null)
             {
                 MessageBox.Show("Please set the `registryConnectionString` environment variable");
                 Environment.Exit(-1);
             }
 
             this.registryManager = RegistryManager.CreateFromConnectionString(registryConnectionString);
+            var query = this.registryManager.CreateQuery("select * from devices");
+            while (query.HasMoreResults)
+            {
+                var page = query.GetNextAsTwinAsync().GetAwaiter().GetResult();
+                foreach (var twin in page)
+                {
+                    checkedListBox1.Items.Add(twin.DeviceId);
+                }
+            }
         }
 
         private async void OnUpdateDeviceTwinButtonClick(object sender, EventArgs e)
         {
             ((Button)sender).Enabled = false;
-            var weatherStation = await this.registryManager.GetTwinAsync(deviceId);
-            weatherStation.Properties.Desired[nameof(WeatherDataPatch)] = new WeatherDataPatch()
+            var collection = checkedListBox1.CheckedItems;
+            foreach (var item in checkedListBox1.CheckedItems)
             {
-                ReportingRateSeconds = Convert.ToInt32(this.nud_reportingRate.Value),
-            };
+                var weatherStation = await this.registryManager.GetTwinAsync(item.ToString());
+                weatherStation.Properties.Desired[nameof(WeatherDataPatch)] = new WeatherDataPatch()
+                {
+                    ReportingRateSeconds = Convert.ToInt32(this.nud_reportingRate.Value),
+                };
 
-            await this.registryManager.UpdateTwinAsync(deviceId, weatherStation, weatherStation.ETag);
+                await this.registryManager.UpdateTwinAsync(item.ToString(), weatherStation, weatherStation.ETag);
+            }
             ((Button)sender).Enabled = true;
         }
 
@@ -51,7 +64,7 @@ namespace Azure.IoT.SimulatedDeviceManager
 
             config.Content.DeviceContent = new Dictionary<string, object>()
             {
-                ["properties.desired." + nameof(NewVersion)] =  new NewVersion()
+                ["properties.desired." + nameof(NewVersion)] = new NewVersion()
                 {
                     FirmwareVersion = versionNumber,
                     FirmwarePackageUri = $"https://example.com/{versionNumber}.zip",

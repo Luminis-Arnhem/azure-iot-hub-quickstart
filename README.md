@@ -12,4 +12,4 @@ IoTHubServiceEndpoint: In Azure Portal, navigate to your IoT Hub. Then, navigate
 DeviceConnectionString: In Azure Portal, navigate to your IoT Hub. Then, navigate to "IoT devices". Select the device you want the connection string for, then copy either the primary or the secondary connection string.
 
 ### (Simulated) Device Manager
-RegistryConnectionString: In Azure Portal, navigate to your IoT Hub. Then, navigate to "Shared access policies". Select the "service" policy, then copy either the primary or the secondary connection string.
+RegistryConnectionString: In Azure Portal, navigate to your IoT Hub. Then, navigate to "Shared access policies". Select the "iothubowner" policy, then copy either the primary or the secondary connection string.
