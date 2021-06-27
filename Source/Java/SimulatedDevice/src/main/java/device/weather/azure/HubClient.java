@@ -15,11 +15,7 @@ import java.util.Map;
 
 public class HubClient {
 
-    private final String hostName;
-
-    private final String deviceId;
-
-    private final String sharedAccessKey;
+    private final String connectionString;
 
     private final IotHubClientProtocol protocol;
 
@@ -32,28 +28,17 @@ public class HubClient {
     private DesiredPropertyCallback desiredPropertyCallback;
 
 
-    public HubClient(String hostName, String deviceId, String sharedAccessKey, IotHubClientProtocol protocol) {
-        this.hostName = hostName;
-        this.deviceId = deviceId;
-        this.sharedAccessKey = sharedAccessKey;
+    public HubClient(String connectionString, IotHubClientProtocol protocol) {
+        this.connectionString = connectionString;
         this.protocol = protocol;
         this.logger = LogManager.getLogger(getClass());
     }
 
     public void connect() throws HubClientException {
+        disconnect();
         try {
-            if (client != null) {
-                client.closeNow();
-                client = null;
-            }
-        } catch (IOException e) {
-            throw new HubClientException("Couldn't close Device Client", e);
-        }
-
-        try {
-            client = new DeviceClient(getConnectionString(), protocol);
+            client = new DeviceClient(connectionString, protocol);
             client.open();
-
             registerOnDesiredProperties();
         } catch (URISyntaxException e) {
             throw new HubClientException("Error creating connection", e);
@@ -77,36 +62,35 @@ public class HubClient {
         if (client == null) {
             throw new HubClientException("Device Client not open");
         }
-        logger.debug(String.format("Sending event; %s, %s", message, context));
-        client.sendEventAsync(message, (iotHubStatusCode, ctx) -> {
-            logger.debug(String.format("Received event callback; %s, %s", iotHubStatusCode, ctx));
-            if (this.eventResponseDelegate != null) {
-                this.eventResponseDelegate.onEventResponse(iotHubStatusCode, ctx);
-            }
-        }, context);
+//        logger.debug(String.format("Sending event; %s, %s", message, context));
+        client.sendEventAsync(message, this::handleEventSync, context);
 
     }
 
     private void registerOnDesiredProperties() {
         try {
             client.startDeviceTwin(new DeviceTwinStatusCallback(), null, new PropertyCallback(), null);
-            System.out.println("Azure; Subscribed to direct methods and polling for reported properties. Waiting...");
-
-            System.out.println("Subscribe to Desired properties on device Twin...");
+            logger.info("Azure; Subscribed to direct methods and polling for reported properties. Waiting...");
             Map<Property, Pair<TwinPropertyCallBack, Object>> desiredProperties = new HashMap<Property, Pair<TwinPropertyCallBack, Object>>() {
                 {
                     put(new Property("WeatherDataPatch", null), new Pair<TwinPropertyCallBack, Object>((property, o) -> {
+//                        logger.debug("TwinPropertyCallBack: " + property);
+                        if (desiredPropertyCallback != null) {
+                            desiredPropertyCallback.onTelemetryConfigChanged(property);
+                        }
+                    }, null));
+
+                    put(new Property("NewVersion", null), new Pair<TwinPropertyCallBack, Object>((property, o) -> {
+//                        logger.debug("TwinPropertyCallBack: " + property);
                         if (desiredPropertyCallback != null) {
                             desiredPropertyCallback.onTelemetryConfigChanged(property);
                         }
                     }, null));
                 }
             };
-
             client.subscribeToTwinDesiredProperties(desiredProperties);
-            client.getDeviceTwin();
         } catch (Exception e) {
-            logger.debug("Azure; On exception, shutting down \n" + " Cause: " + e.getCause() + " \n" + e.getMessage());
+            logger.error("Azure; On exception, shutting down \n" + " Cause: " + e.getCause() + " \n" + e.getMessage());
             try {
                 if (client != null) {
                     client.closeNow();
@@ -118,15 +102,6 @@ public class HubClient {
         }
     }
 
-    private String getConnectionString() {
-        return String.format(
-                "HostName=%s;DeviceId=%s;SharedAccessKey=%s",
-                this.hostName,
-                this.deviceId,
-                this.sharedAccessKey
-        );
-    }
-
     public void setEventResponseDelegate(HubClientEventResponseListener eventResponseDelegate) {
         this.eventResponseDelegate = eventResponseDelegate;
     }
@@ -135,20 +110,19 @@ public class HubClient {
         this.desiredPropertyCallback = desiredPropertyCallback;
     }
 
-    protected static class DeviceTwinStatusCallback implements IotHubEventCallback {
-        public void execute(IotHubStatusCode status, Object context) {
-            System.out.println(String.format("IoT Hub responded to device twin operation with status: %s", status.name()));
+    private void handleEventSync(IotHubStatusCode iotHubStatusCode, Object ctx) {
+//        logger.debug(String.format("Received event callback; %s, %s", iotHubStatusCode, ctx));
+        if (this.eventResponseDelegate != null) {
+            this.eventResponseDelegate.onEventResponse(iotHubStatusCode, ctx);
         }
     }
-//
-//    private class onDesiredPropertyChanged implements TwinPropertyCallBack {
-//        @Override
-//        public void TwinPropertyCallBack(Property property, Object context) {
-//            System.out.println("Azure; onTelemetryConfigChanged, Key: " + property.getKey() + " Value: " + property.getValue());
-//            onDesiredPropertyCallback.onTelemetryConfigChanged(property);
-//        }
-//    }
-//
+
+    protected static class DeviceTwinStatusCallback implements IotHubEventCallback {
+        public void execute(IotHubStatusCode status, Object context) {
+            System.out.println(String.format("IoT Hub responded to device twin operation with status: %s; %s", status.name(), context));
+        }
+    }
+
     protected static class PropertyCallback implements PropertyCallBack<String, String> {
         public void PropertyCall(String propertyKey, String propertyValue, Object context) {
             System.out.println(String.format("Azure; PropertyKey:%s, PropertyValue:%s", propertyKey, propertyKey));

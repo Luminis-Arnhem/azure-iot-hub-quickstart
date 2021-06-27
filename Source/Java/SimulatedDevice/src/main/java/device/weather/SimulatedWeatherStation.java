@@ -30,7 +30,7 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
     private final TemparatureSensor temparatureSensor = new TemperatureSensorImpl();
     private final HumiditySensor humiditySensor = new HumiditySensorImpl();
 
-    private int interval = 10;
+    private int interval = 5;
 
     private static Logger logger;
 
@@ -40,22 +40,20 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
         final PropertyFileReader properties = new PropertyFileReader();
         this.executor = Executors.newScheduledThreadPool(1);
         this.hubClient = new HubClient(
-                properties.getProperty("HostName"),
-                properties.getProperty("DeviceId"),
-                properties.getProperty("SharedAccessKey"),
+                properties.getProperty("connectionString"),
                 IotHubClientProtocol.valueOf(properties.getProperty("protocol", "MQTT"))
         );
+        this.hubClient.setDesiredPropertyCallback(this);
+        this.hubClient.setEventResponseDelegate(this);
+        try {
+            this.hubClient.connect();
+        } catch (HubClientException e) {
+            logger.error(e);
+        }
     }
 
     public void execute() {
-        try {
-            hubClient.connect();
-            hubClient.setEventResponseDelegate(this);
-            hubClient.setDesiredPropertyCallback(this);
-            executor.execute(sendTemperatureData());
-        } catch (HubClientException e) {
-            e.printStackTrace();
-        }
+        executor.schedule(sendTemperatureData(), interval, TimeUnit.SECONDS);
     }
 
     private Runnable sendTemperatureData() {
@@ -64,7 +62,7 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
             logger.info(String.format("Sending weather data; %s", weatherData));
             try {
                 final Message message = new Message(objectMapper.writeValueAsString(weatherData));
-                message.setProperty("temperatureAlert", "true");
+                message.setProperty("temperatureAlert", (weatherData.getTemperature() > 30) ? "true" : "false");
                 hubClient.sendEvent(message, message);
             } catch (JsonProcessingException e) {
                 logger.error("Couldn't serialize weather data", e);
@@ -77,7 +75,7 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
     @Override
     public void onEventResponse(IotHubStatusCode statusCode, Object context) {
         if (statusCode.equals(statusCode.OK) || statusCode.equals(statusCode.OK_EMPTY)) {
-            logger.debug(String.format("Schedules executor with %s seconds", interval));
+//            logger.debug(String.format("Schedules executor with %s seconds", interval));
             executor.schedule(sendTemperatureData(), interval, TimeUnit.SECONDS);
         } else if (statusCode.equals(statusCode.THROTTLED) || statusCode.equals(statusCode.SERVER_BUSY)) {
             logger.warn(String.format("Schedules executor is throttled", interval));
@@ -90,11 +88,18 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
 
     @Override
     public void onTelemetryConfigChanged(Property property) {
-        logger.debug(String.format("Desired Property change: %s", property));
+//        logger.info(String.format("Desired Property change: %s", property));
         if (property.getKey().equals(WeatherDataPatch.class.getSimpleName())) {
             final TwinCollection patch = (TwinCollection) property.getValue();
             interval = ((Double) patch.get("ReportingRateSeconds")).intValue();
             logger.debug(String.format("Received new reporting rate: %s", interval));
+        }
+        if (property.getKey().equals(NewVersion.class.getSimpleName())) {
+            final TwinCollection patch = (TwinCollection) property.getValue();
+            final String version = ((String) patch.get("FirmwareVersion"));
+            final String uri = ((String) patch.get("FirmwarePackageUri"));
+            final String checksum = ((String) patch.get("FirmwarePackageChecksum"));
+            logger.debug(String.format("Received new software; version=%s, uri=%s, checksum=%s", version, uri, checksum));
         }
     }
 }

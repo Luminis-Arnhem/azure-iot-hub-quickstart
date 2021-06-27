@@ -7,5 +7,5 @@
 ```shell script
 $ mvn compile
 $ mvn package
-$ java -jar target/SimulatedDevice-1.0-jar-with-dependencies.jar
+$ java -jar target/device.SimulatedDeviceManager-1.0-jar-with-dependencies.jar
 ```
