@@ -180,7 +180,7 @@ function Add-Device ([String]$IotHubName) {
     until ($device)
 
     Write-Host "Your primary connection string for this device is:"
-    Write-Host "HostName=$iotHubName.azure-devices.net;DeviceId=$deviceName;SharedAccessKey=$($createdDevice.authentication.symmetricKey.primaryKey)"
+    Write-Host "HostName=$iotHubName.azure-devices.net;DeviceId=$deviceName;SharedAccessKey=$($device.authentication.symmetricKey.primaryKey)"
     Write-Host "You can look this up later in the Azure Portal"
 
     return $device
@@ -292,7 +292,10 @@ $entityPath = $iotHub.properties.eventHubEndpoints.events.path;
 $IoTHubEndpoint = "Endpoint=$endpoint;SharedAccessKeyName=service;SharedAccessKey=$sharedAccessServicePrimaryKey;EntityPath=$entityPath"
 
 ## Create Device
-$createdDevice = Add-Device -IotHubName $iotHubName
+do {
+    $createdDevice = Add-Device -IotHubName $iotHubName
+    $anotherDevice = Read-Host "Would you like to add another device [y/N]?"
+} until ($anotherDevice -eq "" || $anotherDevice.ToLower() -eq "n")
 
 ## Create FunctionApp
 $functionApp = Add-FunctionApp -IotHubName $iotHubName -ResourceGroupName $resourceGroup.name -ResourceGroupLocation $resourceGroupLocation -IoTHubEndpoint $IoTHubEndpoint
