@@ -3,7 +3,6 @@ using Microsoft.Azure.Devices;
 using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
-using System.Linq;
 
 namespace Azure.IoT.SimulatedDeviceManager
 {
@@ -22,15 +21,29 @@ namespace Azure.IoT.SimulatedDeviceManager
                 MessageBox.Show("Please set the `registryConnectionString` environment variable");
                 Environment.Exit(-1);
             }
+            registryManager = RegistryManager.CreateFromConnectionString(registryConnectionString);
 
-            this.registryManager = RegistryManager.CreateFromConnectionString(registryConnectionString);
-            var query = this.registryManager.CreateQuery("select * from devices");
+            SetToolTips();
+            UpdateListOfDevices();
+        }
+
+        private void SetToolTips()
+        {
+            toolTip.SetToolTip(btn_refresh, "Refreshes the list of devices");
+            toolTip.SetToolTip(btn_updateDeviceTwin, "Updates the device twin of the selected devices");
+            toolTip.SetToolTip(btn_newVersion, "Publishes a new device configuration to the IoT Hub, causing all device twins to update with a new version number");
+        }
+
+        private void UpdateListOfDevices()
+        {
+            clb_devices.Items.Clear();
+            var query = registryManager.CreateQuery("select * from devices");
             while (query.HasMoreResults)
             {
                 var page = query.GetNextAsTwinAsync().GetAwaiter().GetResult();
                 foreach (var twin in page)
                 {
-                    checkedListBox1.Items.Add(twin.DeviceId);
+                    clb_devices.Items.Add(twin.DeviceId);
                 }
             }
         }
@@ -38,16 +51,16 @@ namespace Azure.IoT.SimulatedDeviceManager
         private async void OnUpdateDeviceTwinButtonClick(object sender, EventArgs e)
         {
             ((Button)sender).Enabled = false;
-            var collection = checkedListBox1.CheckedItems;
-            foreach (var item in checkedListBox1.CheckedItems)
+            var collection = clb_devices.CheckedItems;
+            foreach (var item in clb_devices.CheckedItems)
             {
-                var weatherStation = await this.registryManager.GetTwinAsync(item.ToString());
+                var weatherStation = await registryManager.GetTwinAsync(item.ToString());
                 weatherStation.Properties.Desired[nameof(WeatherDataPatch)] = new WeatherDataPatch()
                 {
-                    ReportingRateSeconds = Convert.ToInt32(this.nud_reportingRate.Value),
+                    ReportingRateSeconds = Convert.ToInt32(nud_reportingRate.Value),
                 };
 
-                await this.registryManager.UpdateTwinAsync(item.ToString(), weatherStation, weatherStation.ETag);
+                await registryManager.UpdateTwinAsync(item.ToString(), weatherStation, weatherStation.ETag);
             }
             ((Button)sender).Enabled = true;
         }
@@ -76,9 +89,16 @@ namespace Azure.IoT.SimulatedDeviceManager
             config.TargetCondition = "*";
             config.Priority = 1;
 
-            await this.registryManager.AddConfigurationAsync(config);
-            this.lbl_versionNumber.Text = versionNumber;
+            await registryManager.AddConfigurationAsync(config);
+            lbl_versionNumber.Text = versionNumber;
 
+            ((Button)sender).Enabled = true;
+        }
+
+        private void OnRefreshButtonClick(object sender, EventArgs e)
+        {
+            ((Button)sender).Enabled = false;
+            UpdateListOfDevices();
             ((Button)sender).Enabled = true;
         }
     }
