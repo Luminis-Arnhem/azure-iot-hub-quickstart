@@ -8,7 +8,6 @@ namespace Azure.IoT.SimulatedDeviceManager
 {
     public partial class ManagerForm : Form
     {
-        private const string deviceId = "TelemetryPrototype";
         private readonly RegistryManager registryManager;
 
         public ManagerForm()
@@ -17,25 +16,52 @@ namespace Azure.IoT.SimulatedDeviceManager
 
             // Portal - IoT Hub - Shared Access Policies - service
             var registryConnectionString = Environment.GetEnvironmentVariable("registryConnectionString");
-            if(registryConnectionString == null)
+            if (registryConnectionString == null)
             {
                 MessageBox.Show("Please set the `registryConnectionString` environment variable");
                 Environment.Exit(-1);
             }
+            registryManager = RegistryManager.CreateFromConnectionString(registryConnectionString);
 
-            this.registryManager = RegistryManager.CreateFromConnectionString(registryConnectionString);
+            SetToolTips();
+            UpdateListOfDevices();
+        }
+
+        private void SetToolTips()
+        {
+            toolTip.SetToolTip(btn_refresh, "Refreshes the list of devices");
+            toolTip.SetToolTip(btn_updateDeviceTwin, "Updates the device twin of the selected devices");
+            toolTip.SetToolTip(btn_newVersion, "Publishes a new device configuration to the IoT Hub, causing all device twins to update with a new version number");
+        }
+
+        private void UpdateListOfDevices()
+        {
+            clb_devices.Items.Clear();
+            var query = registryManager.CreateQuery("select * from devices");
+            while (query.HasMoreResults)
+            {
+                var page = query.GetNextAsTwinAsync().GetAwaiter().GetResult();
+                foreach (var twin in page)
+                {
+                    clb_devices.Items.Add(twin.DeviceId);
+                }
+            }
         }
 
         private async void OnUpdateDeviceTwinButtonClick(object sender, EventArgs e)
         {
             ((Button)sender).Enabled = false;
-            var weatherStation = await this.registryManager.GetTwinAsync(deviceId);
-            weatherStation.Properties.Desired[nameof(WeatherDataPatch)] = new WeatherDataPatch()
+            var collection = clb_devices.CheckedItems;
+            foreach (var item in clb_devices.CheckedItems)
             {
-                ReportingRateSeconds = Convert.ToInt32(this.nud_reportingRate.Value),
-            };
+                var weatherStation = await registryManager.GetTwinAsync(item.ToString());
+                weatherStation.Properties.Desired[nameof(WeatherDataPatch)] = new WeatherDataPatch()
+                {
+                    ReportingRateSeconds = Convert.ToInt32(nud_reportingRate.Value),
+                };
 
-            await this.registryManager.UpdateTwinAsync(deviceId, weatherStation, weatherStation.ETag);
+                await registryManager.UpdateTwinAsync(item.ToString(), weatherStation, weatherStation.ETag);
+            }
             ((Button)sender).Enabled = true;
         }
 
@@ -51,7 +77,7 @@ namespace Azure.IoT.SimulatedDeviceManager
 
             config.Content.DeviceContent = new Dictionary<string, object>()
             {
-                ["properties.desired." + nameof(NewVersion)] =  new NewVersion()
+                ["properties.desired." + nameof(NewVersion)] = new NewVersion()
                 {
                     FirmwareVersion = versionNumber,
                     FirmwarePackageUri = $"https://example.com/{versionNumber}.zip",
@@ -63,9 +89,16 @@ namespace Azure.IoT.SimulatedDeviceManager
             config.TargetCondition = "*";
             config.Priority = 1;
 
-            await this.registryManager.AddConfigurationAsync(config);
-            this.lbl_versionNumber.Text = versionNumber;
+            await registryManager.AddConfigurationAsync(config);
+            lbl_versionNumber.Text = versionNumber;
 
+            ((Button)sender).Enabled = true;
+        }
+
+        private void OnRefreshButtonClick(object sender, EventArgs e)
+        {
+            ((Button)sender).Enabled = false;
+            UpdateListOfDevices();
             ((Button)sender).Enabled = true;
         }
     }
