@@ -74,14 +74,12 @@ public class HubClient {
             Map<Property, Pair<TwinPropertyCallBack, Object>> desiredProperties = new HashMap<Property, Pair<TwinPropertyCallBack, Object>>() {
                 {
                     put(new Property("WeatherDataPatch", null), new Pair<TwinPropertyCallBack, Object>((property, o) -> {
-//                        logger.debug("TwinPropertyCallBack: " + property);
                         if (desiredPropertyCallback != null) {
                             desiredPropertyCallback.onTelemetryConfigChanged(property);
                         }
                     }, null));
 
                     put(new Property("NewVersion", null), new Pair<TwinPropertyCallBack, Object>((property, o) -> {
-//                        logger.debug("TwinPropertyCallBack: " + property);
                         if (desiredPropertyCallback != null) {
                             desiredPropertyCallback.onTelemetryConfigChanged(property);
                         }
@@ -111,7 +109,6 @@ public class HubClient {
     }
 
     private void handleEventSync(IotHubStatusCode iotHubStatusCode, Object ctx) {
-//        logger.debug(String.format("Received event callback; %s, %s", iotHubStatusCode, ctx));
         if (this.eventResponseDelegate != null) {
             this.eventResponseDelegate.onEventResponse(iotHubStatusCode, ctx);
         }

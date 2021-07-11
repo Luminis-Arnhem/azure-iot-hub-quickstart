@@ -5,7 +5,7 @@ Azure IoT Hub Quickstart is a quickstart project to help you get started with Az
 Before getting started, you should have the following tools installed:
 - Azure CLI
 - PowerShell or PowerShell Core
-- .NET & .NET Core 3.1, or Java
+- .NET & .NET Core 3.1, or Java and Maven
 - A .NET IDE of your choice
 - (Optional) a Java IDE of your choice
 
@@ -18,11 +18,25 @@ To get started, run the following command in your terminal:
 ```
 This script takes you through some prompts to deploy a basic cloud infrastructure in Azure.
 
+### Resource Location
+When you need to create a new resource group, you will be asked to select a location. You can identify a location near you using this webpage: https://azure.microsoft.com/en-us/global-infrastructure/geographies/
+
+### Define an IoT Hub name
+When you are asked to provide a name for you IoT Hub, be aware of:
+- The name must be unique within Azure globally for all Azure customers.
+- The name must be between 3 and 18 characters (only numeric and lowercase alphanumeric).
+
 ## Simulated devices
-The repo contains simulated devices which report sensor data to the IoT Hub. There is a .NET and Java version of the simulated device, both of which do the same thing. Simply run the project after deploying the IoT Hub infrastructure and taking note of the device connection string.
+The repo contains simulated devices which report sensor data to the IoT Hub. 
+There is a .NET and Java version of the simulated device, both of which do the same thing. 
+Simply run the project after deploying the IoT Hub infrastructure and taking note of the device connection string.
 
 ## Azure Function
-The Azure Function in this repo reads incoming data from the IoT Hub, and outputs it to the logger. These logs can be read in Azure Application Insights or from the logs window of that Azure Function. The project automatically gets deployed to Microsoft Azure while you run the deployment script.
+The Azure Function in this repo reads incoming data from the IoT Hub, and outputs it to the logger. 
+These logs can be read in Azure Application Insights or from the logs window of that Azure Function. 
+The project automatically gets deployed to Microsoft Azure while you run the deployment script.
 
 ## Device Manager
-The device manager is an example GUI application which connects to the Azure IoT Hub to manage certain devices, such as updating their device twins. There is a .NET and Java version of the device manager, both of which do the same thing. Simply run the project after deploying the IoT Hub infrastructure and taking note of the shared access policy connection string.
+The device manager is an example GUI application which connects to the Azure IoT Hub to manage certain devices, such as updating their device twins. 
+There is a .NET and Java version of the device manager, both of which do the same thing. 
+Simply run the project after deploying the IoT Hub infrastructure and taking note of the shared access policy connection string.

@@ -75,7 +75,6 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
     @Override
     public void onEventResponse(IotHubStatusCode statusCode, Object context) {
         if (statusCode.equals(statusCode.OK) || statusCode.equals(statusCode.OK_EMPTY)) {
-//            logger.debug(String.format("Schedules executor with %s seconds", interval));
             executor.schedule(sendTemperatureData(), interval, TimeUnit.SECONDS);
         } else if (statusCode.equals(statusCode.THROTTLED) || statusCode.equals(statusCode.SERVER_BUSY)) {
             logger.warn(String.format("Schedules executor is throttled", interval));
@@ -88,7 +87,6 @@ public class SimulatedWeatherStation implements HubClientEventResponseListener, 
 
     @Override
     public void onTelemetryConfigChanged(Property property) {
-//        logger.info(String.format("Desired Property change: %s", property));
         if (property.getKey().equals(WeatherDataPatch.class.getSimpleName())) {
             final TwinCollection patch = (TwinCollection) property.getValue();
             interval = ((Double) patch.get("ReportingRateSeconds")).intValue();

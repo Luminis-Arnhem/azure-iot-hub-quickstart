@@ -63,7 +63,7 @@ public class SimulatedDeviceManager {
             splitPane.setDividerSize(0);
             frame.getContentPane().add(splitPane, BorderLayout.CENTER);
 
-            frame.setSize(800,400); //pixel size of frame in width then height
+            frame.setSize(800,400);
             frame.setVisible(true);
 
             if (twinClient != null) {

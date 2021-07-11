@@ -51,7 +51,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>device.SimulatedDevice</mainClass>
+                            <mainClass>manager.SimulatedDeviceManager</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -62,7 +62,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>device.SimulatedDevice</mainClass>
+                            <mainClass>manager.SimulatedDeviceManager</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
