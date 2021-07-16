@@ -288,10 +288,15 @@ $iotHub = Add-IotHub
 $iotHubName = $iotHub.name
 
 $serviceSharedAccessPolicy = az iot hub policy show --hub-name $iotHubName --name service | ConvertFrom-Json
+$iothubownerSharedAccessPolicy = az iot hub policy show --hub-name $iotHubName --name iothubowner | ConvertFrom-Json
 $sharedAccessServicePrimaryKey = $serviceSharedAccessPolicy.primaryKey
+$sharedAccessOwnerPrimaryKey = $iothubownerSharedAccessPolicy.primaryKey
+
 $endpoint = $iotHub.properties.eventHubEndpoints.events.endpoint;
 $entityPath = $iotHub.properties.eventHubEndpoints.events.path;
 $IoTHubEndpoint = "Endpoint=$endpoint;SharedAccessKeyName=service;SharedAccessKey=$sharedAccessServicePrimaryKey;EntityPath=$entityPath"
+$deviceManagerConnectionString = "HostName=$iotHubName.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=$sharedAccessOwnerPrimaryKey"
+Write-Host "Your primary connection string for the Device Manager is: $deviceManagerConnectionString. You can look this up later in the Azure Portal."
 
 ## Create Device
 do {
