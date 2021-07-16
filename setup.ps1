@@ -245,6 +245,8 @@ function Add-FunctionApp([String]$IotHubName, [String]$ResourceGroupName, [Strin
 
     Write-Host "Deploying the function application..."
     az functionapp deployment source config-zip -g $ResourceGroupName -n $functionAppName --src $assembledFilePath
+
+    Write-Host "Deployment of all components done!"
 }
 
 ### Main Script
@@ -295,7 +297,7 @@ $IoTHubEndpoint = "Endpoint=$endpoint;SharedAccessKeyName=service;SharedAccessKe
 do {
     $createdDevice = Add-Device -IotHubName $iotHubName
     $anotherDevice = Read-Host "Would you like to add another device [y/N]?"
-} until ($anotherDevice -eq "" || $anotherDevice.ToLower() -eq "n")
+} until ($anotherDevice -eq "" -or $anotherDevice.ToLower() -eq "n")
 
 ## Create FunctionApp
 $functionApp = Add-FunctionApp -IotHubName $iotHubName -ResourceGroupName $resourceGroup.name -ResourceGroupLocation $resourceGroupLocation -IoTHubEndpoint $IoTHubEndpoint
